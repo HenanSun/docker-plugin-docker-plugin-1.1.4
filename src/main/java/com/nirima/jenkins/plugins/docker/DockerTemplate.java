@@ -456,10 +456,10 @@ public class DockerTemplate implements Describable<DockerTemplate> {
     @Restricted(NoExternalUse.class)
     public DockerTransientNode provisionNode(DockerAPI api, TaskListener listener) throws IOException, Descriptor.FormException, InterruptedException {
         try {
-            final InspectImageResponse image = pullImage(api, listener);
+            /*final InspectImageResponse image = pullImage(api, listener);
             if (StringUtils.isBlank(remoteFs)) {
                 remoteFs = image.getContainerConfig().getWorkingDir();
-            }
+            }*/
             if (StringUtils.isBlank(remoteFs)) {
                 remoteFs = "/";
             }
