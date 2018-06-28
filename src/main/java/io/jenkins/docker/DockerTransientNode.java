@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * A {@link Slave} node designed to be used only once for a build.
- * 
+ *
  * @author <a href="mailto:nicolas.deloof@gmail.com">Nicolas De Loof</a>
  */
 public class DockerTransientNode extends Slave {
@@ -40,6 +40,8 @@ public class DockerTransientNode extends Slave {
     private boolean removeVolumes;
 
     private String cloudId;
+
+    private String slaveUrl;
 
     private AtomicBoolean acceptingTasks = new AtomicBoolean(true);
 
@@ -82,7 +84,7 @@ public class DockerTransientNode extends Slave {
         if (dockerAPI == null) {
             final DockerCloud cloud = getCloud();
             if (cloud != null) {
-                dockerAPI = cloud.getDockerApi();
+                dockerAPI = cloud.getDockerApiByUrl(slaveUrl);
             }
         }
         return dockerAPI;
@@ -110,6 +112,14 @@ public class DockerTransientNode extends Slave {
 
     public void setCloudId(String cloudId) {
         this.cloudId = cloudId;
+    }
+
+    public String getSlaveUrl() {
+        return slaveUrl;
+    }
+
+    public void setSlaveUrl(String url) {
+        this.slaveUrl = url;
     }
 
     @Override

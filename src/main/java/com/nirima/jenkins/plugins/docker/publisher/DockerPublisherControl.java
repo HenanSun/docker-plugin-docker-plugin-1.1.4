@@ -1,7 +1,7 @@
 package com.nirima.jenkins.plugins.docker.publisher;
 
 import com.github.dockerjava.api.exception.DockerException;
-import com.nirima.jenkins.plugins.docker.builder.DockerBuilderControlOptionStopAll;
+//import com.nirima.jenkins.plugins.docker.builder.DockerBuilderControlOptionStopAll;
 import hudson.Extension;
 import hudson.Launcher;
 import hudson.model.*;
@@ -42,7 +42,7 @@ public class DockerPublisherControl extends Recorder implements Serializable {
     public boolean perform(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener) throws InterruptedException, IOException {
 
         try {
-            new DockerBuilderControlOptionStopAll(remove).execute(build, launcher, listener);
+            //new DockerBuilderControlOptionStopAll(remove).execute(build, launcher, listener);
         } catch (DockerException e) {
             throw new RuntimeException(e);
         }

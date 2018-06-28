@@ -83,6 +83,8 @@ public class DockerCloud extends Cloud {
 
     private DockerAPI dockerApi;
 
+    private Map<String, DockerAPI> dockerApis = new HashMap<String, DockerAPI>();
+
     /**
      * Total max allowed number of containers
      */
@@ -157,17 +159,27 @@ public class DockerCloud extends Cloud {
     }
 
 
+    public DockerAPI getDockerApiByUrl(String slaveUrl) {
+        return dockerApis.get(slaveUrl);
+    }
+
+    public List<DockerAPI> getDockerApis() {
+        List<DockerAPI> list = new ArrayList<DockerAPI>(dockerApis.values());
+        list.add(dockerApi);
+        return list;
+    }
+
     public DockerAPI getDockerApi() {
         return dockerApi;
     }
 
     @Deprecated
     public int getConnectTimeout() {
-        return dockerApi.getConnectTimeout();
+        return connectTimeout;
     }
 
 
-    @Deprecated
+    /*@Deprecated
     public DockerServerEndpoint getDockerHost() {
         return dockerApi.getDockerHost();
     }
@@ -180,7 +192,7 @@ public class DockerCloud extends Cloud {
     @Deprecated
     public String getDockerHostname() {
         return dockerApi.getHostname();
-    }
+    }*/
 
     /**
      * @deprecated use {@link #getContainerCap()}
@@ -213,12 +225,12 @@ public class DockerCloud extends Cloud {
      * Connects to Docker. <em>NOTE:</em> This should not be used for any
      * long-running operations as the client it returns is not protected from
      * closure.
-     * 
+     *
      * @deprecated Use {@link #getDockerApi()} and then
      *             {@link DockerAPI#getClient()} to get the client, followed by
      *             a call to {@link DockerClient#close()}.
      * @return Docker client.
-     */
+     *
     @Deprecated
     public DockerClient getClient() {
         try {
@@ -232,7 +244,7 @@ public class DockerCloud extends Cloud {
         } catch (IOException ex) {
             throw new RuntimeException(ex);
         }
-    }
+    }/
 
     /**
      * Decrease the count of slaves being "provisioned".
@@ -347,10 +359,13 @@ public class DockerCloud extends Cloud {
                         DockerTransientNode slave = null;
                         try {
                             // TODO where can we log provisioning progress ?
-                            final DockerAPI api = DockerCloud.this.getDockerApi();
+                            final DockerServerEndpoint host = new DockerServerEndpoint(t.getLabelString(), credentialsId);
+                            final DockerAPI api = new DockerAPI(host, connectTimeout, readTimeout, version, t.getLabelString());
                             slave = t.provisionNode(api, TaskListener.NULL);
                             slave.setCloudId(DockerCloud.this.name);
+                            slave.setSlaveUrl(t.getLabelString());
                             plannedNode.complete(slave);
+                            dockerApis.put(t.getLabelString(), api);
 
                             // On provisioning completion, let's trigger NodeProvisioner
                             Jenkins.getInstance().addNode(slave);
@@ -456,7 +471,7 @@ public class DockerCloud extends Cloud {
 
     /**
      * Adds a template which is temporary provided and bound to a specific job.
-     * 
+     *
      * @param jobId Unique id (per master) of the job to which the template is bound.
      * @param template The template to bound to a specific job.
      */
@@ -466,7 +481,7 @@ public class DockerCloud extends Cloud {
 
     /**
      * Removes a template which is bound to a specific job.
-     * 
+     *
      * @param jobId Id of the job.
      */
     public synchronized void removeJobTemplate(long jobId) {
@@ -512,7 +527,7 @@ public class DockerCloud extends Cloud {
 
     /**
      * Private method to ensure that the map of job specific templates is initialized.
-     * 
+     *
      * @return The map of job specific templates.
      */
     private Map<Long, DockerTemplate> getJobTemplates() {
@@ -550,11 +565,15 @@ public class DockerCloud extends Cloud {
         if (imageName != null) {
             labelFilter.put(DockerTemplateBase.CONTAINER_LABEL_IMAGE, imageName);
         }
-        final List<?> containers;
-        try(final DockerClient client = dockerApi.getClient()) {
-            containers = client.listContainersCmd().withLabelFilter(labelFilter).exec();
+        int count = 0;
+        for (DockerAPI api : dockerApis.values()) {
+            final List<?> containers;
+            try(final DockerClient client = api.getClient()) {
+                containers = client.listContainersCmd().withLabelFilter(labelFilter).exec();
+            }
+            count += containers.size();
         }
-        final int count = containers.size();
+
         return count;
     }
 
@@ -628,8 +647,9 @@ public class DockerCloud extends Cloud {
             // migration to docker-commons
             dockerHost = new DockerServerEndpoint(serverUrl, credentialsId);
         }
-        if (dockerApi == null) {
-            dockerApi = new DockerAPI(dockerHost, connectTimeout, readTimeout, version, dockerHostname);
+        if (dockerApis == null) {
+            DockerAPI dockerApi = new DockerAPI(dockerHost, connectTimeout, readTimeout, version, dockerHostname);
+            dockerApis.put(serverUrl, dockerApi);
         }
 
         return this;
@@ -637,9 +657,15 @@ public class DockerCloud extends Cloud {
 
     @Override
     public String toString() {
+        final StringBuilder das = new StringBuilder("DockerAPIS{");
+        for (DockerAPI a : dockerApis.values()) {
+          das.append(a).append(";");
+        }
+        das.append("}");
+
         final StringBuilder sb = new StringBuilder("DockerCloud{");
         sb.append("name=").append(name);
-        sb.append(", dockerApi=").append(dockerApi);
+        sb.append(", dockerApi=").append(das.toString());
         sb.append(", containerCap=").append(containerCap);
         sb.append(", exposeDockerHost=").append(exposeDockerHost);
         sb.append(", disabled=").append(disabled);
@@ -653,7 +679,7 @@ public class DockerCloud extends Cloud {
         final int prime = 31;
         int result = 1;
         result = prime * result + ((name == null) ? 0 : name.hashCode());
-        result = prime * result + ((dockerApi == null) ? 0 : dockerApi.hashCode());
+        result = prime * result + ((dockerApis == null) ? 0 : dockerApis.hashCode());
         result = prime * result + containerCap;
         result = prime * result + ((templates == null) ? 0 : templates.hashCode());
         result = prime * result + (exposeDockerHost ? 1231 : 1237);
@@ -670,6 +696,7 @@ public class DockerCloud extends Cloud {
 
         if (name != null ? !name.equals(that.name) : that.name != null) return false;
         if (dockerApi != null ? !dockerApi.equals(that.dockerApi) : that.dockerApi != null) return false;
+        if (dockerApis != null ? !dockerApis.equals(that.dockerApis) : that.dockerApis != null) return false;
         if (containerCap != that.containerCap) return false;
         if (templates != null ? !templates.equals(that.templates) : that.templates != null) return false;
         if (exposeDockerHost != that.exposeDockerHost)return false;
@@ -680,7 +707,9 @@ public class DockerCloud extends Cloud {
     public boolean isTriton() {
         if( _isTriton == null ) {
             final Version remoteVersion;
-            try(final DockerClient client = dockerApi.getClient()) {
+            DockerServerEndpoint dockerHost = new DockerServerEndpoint(serverUrl, credentialsId);
+            DockerAPI api = new DockerAPI(dockerHost, connectTimeout, readTimeout, version, dockerHostname);
+            try(final DockerClient client = api.getClient()) {
                 remoteVersion = client.versionCmd().exec();
             } catch (IOException ex) {
                 throw new RuntimeException(ex);

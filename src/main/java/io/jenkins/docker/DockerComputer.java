@@ -46,7 +46,7 @@ public class DockerComputer extends SlaveComputer {
         final DockerCloud cloud = getCloud();
         if (cloud != null && cloud.isExposeDockerHost()) {
             variables.put("JENKINS_CLOUD_ID", cloud.name);
-            String dockerHost = cloud.getDockerApi().getDockerHost().getUri();
+            String dockerHost = cloud.getDockerApiByUrl(getNode().getSlaveUrl()).getDockerHost().getUri();
             variables.put("DOCKER_HOST", dockerHost);
         }
         return variables;
