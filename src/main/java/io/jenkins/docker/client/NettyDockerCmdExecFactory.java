@@ -2,14 +2,14 @@
  * Enhanced version of com.github.dockerjava.netty.NettyDockerCmdExecFactory,
  * from the docker-java project (version 3.0.14), which is distributed under
  * the Apache 2 license.
- * 
+ *
  * This code is a derivative work that includes a readTimeout.
  * The code which provides this enhanced functionality can be found between comments
  * of the form "START/END of new readTimeout code".
  * It was necessary to copy the entire NettyDockerCmdExecFactory class here because
  * the design of the NettyDockerCmdExecFactory class (mostly private fields and
  * methods) does not provide for easy extensibility.
- * 
+ *
  * Note: Once the official release of docker-java includes this additional
  * functionality, the docker-plugin code should just use that and this code can
  * (and should) be removed from the docker-plugin code.
@@ -337,8 +337,17 @@ public class NettyDockerCmdExecFactory implements DockerCmdExecFactory {
 
         @Override
         public DuplexChannel connect(Bootstrap bootstrap) throws InterruptedException {
-            String host = dockerClientConfig.getDockerHost().getHost();
-            int port = dockerClientConfig.getDockerHost().getPort();
+            String url = dockerClientConfig.getDockerHost().toString();
+            if (url == null || url.length() == 0) {
+              throw new RuntimeException("null host url");
+            }
+
+            int fIndex = url.indexOf("://");
+            int lIndex = url.lastIndexOf(":");
+            String host = url.substring(fIndex+3, lIndex);
+            String portSt = url.substring(lIndex+1);
+            int port = Integer.parseInt(portSt);
+
 
             if (port == -1) {
                 throw new RuntimeException("no port configured for " + host);
