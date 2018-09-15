@@ -543,6 +543,7 @@ public class DockerCloud extends Cloud {
      */
     public synchronized void removeTemplate(DockerTemplate t) {
         if ( templates != null ) {
+            dockerApis.remove(t.getLabelString());
             templates.remove(t);
         }
     }
@@ -647,9 +648,9 @@ public class DockerCloud extends Cloud {
             // migration to docker-commons
             dockerHost = new DockerServerEndpoint(serverUrl, credentialsId);
         }
-        if (dockerApis == null) {
-            DockerAPI dockerApi = new DockerAPI(dockerHost, connectTimeout, readTimeout, version, dockerHostname);
-            dockerApis.put(serverUrl, dockerApi);
+
+        if (dockerApi == null) {
+            dockerApi = new DockerAPI(dockerHost, connectTimeout, readTimeout, version, dockerHostname);
         }
 
         return this;
